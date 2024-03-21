@@ -14,71 +14,6 @@ def display_scores(scores):
     print("Standard deviation:", scores.std())
     print("\n")
 
-def plot_precision_recall_vs_threshold(precisions, recalls, thresholds):
-    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-
-    axs[0].plot(thresholds, precisions[:-1], "b--", label="Precision")
-    axs[0].set_xlabel("Threshold")
-    axs[0].legend(loc="center left")
-    axs[0].set_ylim([0, 1])
-
-    axs[1].plot(thresholds, recalls[:-1], "g-", label="Recall")
-    axs[1].set_xlabel("Threshold")
-    axs[1].legend(loc="center left")
-    axs[1].set_ylim([0, 1])
-
-    plt.show()
-
-def plot_precision_vs_recall(precisions, recalls):
-    fig, ax = plt.subplots(figsize=(5, 5))
-
-    ax.plot(recalls, precisions, "b-", linewidth=2)
-    ax.set_xlabel("Recall")
-    ax.set_ylabel("Precision")
-    ax.axis([0, 1, 0, 1])
-
-    plt.show()
-
-def plot_roc_curve(fpr, tpr, label=None):
-    fig, ax = plt.subplots(figsize=(5, 5))
-
-    ax.plot(fpr, tpr, linewidth=2, label=label)
-    ax.plot([0, 1], [0, 1], 'k--')
-    ax.axis([0, 1, 0, 1])
-    ax.set_xlabel('False Positive Rate')
-    ax.set_ylabel('True Positive Rate')
-
-    plt.show()
-
-def multilabel_roc(y_test, labels, y_scores):
-    fpr = dict()
-    tpr = dict()
-
-    for i in range(len(labels)):
-        fpr[i], tpr[i], _ = roc_curve(y_test[:, i], y_scores[:, i])
-        plt.plot(fpr[i], tpr[i], lw=2, label='class {}'.format(i))
-
-    plt.xlabel("false positive rate")
-    plt.ylabel("true positive rate")
-    plt.legend(loc="best")
-    plt.title("ROC curve")
-    plt.show()
-
-def multilabel_precision_vs_recall(y_test, labels, y_scores):
-    precision = dict()
-    recall = dict()
-
-    for i in range(len(labels)):
-        precision[i], recall[i], _ = precision_recall_curve(y_test[:, i],
-                                                            y_scores[:, i])
-        plt.plot(recall[i], precision[i], lw=2, label='class {}'.format(i))
-            
-    plt.xlabel("recall")
-    plt.ylabel("precision")
-    plt.legend(loc="best")
-    plt.title("precision vs. recall curve")
-    plt.show()
-
 def classifier_performance_measurements(filename, classifier, x_train, y_train, x_test, y_test, multilable=False, plot=False):
     cwd = os.getcwd()
     filename = os.path.join(cwd, "performance", filename + ".txt")
@@ -139,38 +74,6 @@ def classifier_performance_measurements(filename, classifier, x_train, y_train, 
         f.write(str(recall_score(y_test, y_test_predict, average="macro")) + "\n")
         f.write("F1 score:\n")
         f.write(str(f1_score(y_test, y_test_predict, average="macro")) + "\n")
-
-        # if multilable and plot:
-        #     y_train_binary = label_binarize(y_train, classes=labels)
-        #     y_test_binary = label_binarize(y_test, classes=labels)
-
-        #     clf = OneVsRestClassifier(classifier)
-
-        #     clf.fit(x_train, y_train_binary)
-
-        #     y_scores = clf.decision_function(x_test)
-
-        #     multilabel_precision_vs_recall(y_test_binary, labels, y_scores)
-
-        #     multilabel_roc(y_test_binary, labels, y_scores)
-
-        # elif plot:
-        #     y_scores = cross_val_predict(classifier, x_train, y_train, cv=3, method="decision_function")
-        #     precisions, recalls, thresholds = precision_recall_curve(y_train, y_scores)
-        #     plot_precision_recall_vs_threshold(precisions, recalls, thresholds)
-        #     plot_precision_vs_recall(precisions, recalls)
-
-        #     fpr, tpr, thresholds = roc_curve(y_train, y_scores)
-        #     plot_roc_curve(fpr, tpr)
-
-        #     f.write("\nAUC score:\n")
-        #     f.write(str(roc_auc_score(y_train, y_scores)) + "\n")
-
-
-
-
-
-
 
 # The F1
 # score favors classifiers that have similar precision and recall. This is not always
