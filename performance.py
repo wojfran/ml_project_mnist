@@ -1,3 +1,5 @@
+import os
+import joblib
 from matplotlib import pyplot as plt
 import numpy as np
 from sklearn.calibration import cross_val_predict, label_binarize
@@ -77,78 +79,92 @@ def multilabel_precision_vs_recall(y_test, labels, y_scores):
     plt.title("precision vs. recall curve")
     plt.show()
 
-def classifier_performance_measurements(classifier, x_train, y_train, x_test, y_test, multilable=False, plot=False):
-    print("fitting classifier...")
-    print(x_train.shape, y_train.shape)
-    classifier.fit(x_train, y_train)
-    print("classifier fitted")
-    labels = list(set(y_train))
+def classifier_performance_measurements(filename, classifier, x_train, y_train, x_test, y_test, multilable=False, plot=False):
+    cwd = os.getcwd()
+    filename = os.path.join(cwd, "performance", filename + ".txt")
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
 
-    print("cross validating...")
-    cvs = cross_val_score(classifier, x_train, y_train, cv=3, scoring="accuracy")
-    print("Cross validation scores:")
-    display_scores(cvs)
+    with open(filename, 'w') as f:
+        labels = list(set(y_train))
 
-    y_train_predict = cross_val_predict(classifier, x_train, y_train, cv=3)
+        cvs = cross_val_score(classifier, x_train, y_train, cv=3, scoring="accuracy")
+        f.write("Cross validation scores:\n")
+        f.write("Scores: " + str(cvs) + "\n")
+        f.write("Mean: " + str(cvs.mean()) + "\n")
+        f.write("Standard deviation: " + str(cvs.std()) + "\n\n")
 
-    print("Confusion matrix:")
-    if multilable:
-        conf_mx = confusion_matrix(y_train, y_train_predict)
-        print(conf_mx)
-    else:
-        conf_mx = multilabel_confusion_matrix(y_train, y_train_predict)
-        print(conf_mx)
+        y_train_predict = cross_val_predict(classifier, x_train, y_train, cv=3)
 
-    if plot:
-        fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+        f.write("Confusion matrix:\n")
+        if multilable:
+            conf_mx = confusion_matrix(y_train, y_train_predict)
+            f.write(str(conf_mx) + "\n")
+        else:
+            conf_mx = multilabel_confusion_matrix(y_train, y_train_predict)
+            f.write(str(conf_mx) + "\n")
 
-        axs[0].matshow(conf_mx, cmap=plt.cm.gray)
-        axs[0].set_title("Confusion matrix")
-        axs[0].axis('off')
+        if plot:
+            f.write("\nConfusion matrix plot:\n")
+            fig, axs = plt.subplots(1, 2, figsize=(10, 5))
 
-        row_sums = conf_mx.sum(axis=1, keepdims=True)
-        norm_conf_mx = conf_mx / row_sums
-        np.fill_diagonal(norm_conf_mx, 0)
-        axs[1].matshow(norm_conf_mx, cmap=plt.cm.gray)
-        axs[1].set_title("Confusion matrix errors")
-        axs[1].axis('off')
+            axs[0].matshow(conf_mx, cmap=plt.cm.gray)
+            axs[0].set_title("Confusion matrix")
+            axs[0].axis('off')
 
-        plt.show()
+            row_sums = conf_mx.sum(axis=1, keepdims=True)
+            norm_conf_mx = conf_mx / row_sums
+            np.fill_diagonal(norm_conf_mx, 0)
+            axs[1].matshow(norm_conf_mx, cmap=plt.cm.gray)
+            axs[1].set_title("Confusion matrix errors")
+            axs[1].axis('off')
 
-    print("\nPrecision score:")
-    print(precision_score(y_train, y_train_predict, average="macro"))
+            plt.savefig(filename + "_confusion_matrix.png")
+            plt.close()
 
-    print("Recall score:")
-    print(recall_score(y_train, y_train_predict, average="macro"))
+        f.write("\nScores based on cross-validation on the training set:\n")
+        f.write("Precision score:\n")
+        f.write(str(precision_score(y_train, y_train_predict, average="macro")) + "\n")
+        f.write("Recall score:\n")
+        f.write(str(recall_score(y_train, y_train_predict, average="macro")) + "\n")
+        f.write("F1 score:\n")
+        f.write(str(f1_score(y_train, y_train_predict, average="macro")) + "\n")
 
-    print("F1 score:")
-    print(f1_score(y_train, y_train_predict, average="macro"))
+        y_test_predict = classifier.fit(x_train, y_train).predict(x_test)
+        joblib.dump(classifier, filename + ".joblib")
 
-    if multilable and plot:
-        y_train_binary = label_binarize(y_train, classes=labels)
-        y_test_binary = label_binarize(y_test, classes=labels)
+        f.write("\nScores based on the test set:\n")
+        f.write("Precision score:\n")
+        f.write(str(precision_score(y_test, y_test_predict, average="macro")) + "\n")
+        f.write("Recall score:\n")
+        f.write(str(recall_score(y_test, y_test_predict, average="macro")) + "\n")
+        f.write("F1 score:\n")
+        f.write(str(f1_score(y_test, y_test_predict, average="macro")) + "\n")
 
-        clf = OneVsRestClassifier(classifier)
+        # if multilable and plot:
+        #     y_train_binary = label_binarize(y_train, classes=labels)
+        #     y_test_binary = label_binarize(y_test, classes=labels)
 
-        clf.fit(x_train, y_train_binary)
+        #     clf = OneVsRestClassifier(classifier)
 
-        y_scores = clf.decision_function(x_test)
+        #     clf.fit(x_train, y_train_binary)
 
-        multilabel_precision_vs_recall(y_test_binary, labels, y_scores)
+        #     y_scores = clf.decision_function(x_test)
 
-        multilabel_roc(y_test_binary, labels, y_scores)
+        #     multilabel_precision_vs_recall(y_test_binary, labels, y_scores)
 
-    elif plot:
-        y_scores = cross_val_predict(classifier, x_train, y_train, cv=3, method="decision_function")
-        precisions, recalls, thresholds = precision_recall_curve(y_train, y_scores)
-        plot_precision_recall_vs_threshold(precisions, recalls, thresholds)
-        plot_precision_vs_recall(precisions, recalls)
+        #     multilabel_roc(y_test_binary, labels, y_scores)
 
-        fpr, tpr, thresholds = roc_curve(y_train, y_scores)
-        plot_roc_curve(fpr, tpr)
+        # elif plot:
+        #     y_scores = cross_val_predict(classifier, x_train, y_train, cv=3, method="decision_function")
+        #     precisions, recalls, thresholds = precision_recall_curve(y_train, y_scores)
+        #     plot_precision_recall_vs_threshold(precisions, recalls, thresholds)
+        #     plot_precision_vs_recall(precisions, recalls)
 
-        print("AUC score:")
-        print(roc_auc_score(y_train, y_scores))
+        #     fpr, tpr, thresholds = roc_curve(y_train, y_scores)
+        #     plot_roc_curve(fpr, tpr)
+
+        #     f.write("\nAUC score:\n")
+        #     f.write(str(roc_auc_score(y_train, y_scores)) + "\n")
 
 
 
